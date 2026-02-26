@@ -1,118 +1,66 @@
 name: Test Claude Code Action
-
 on:
-  pull_request:
-  workflow_dispatch:
-    inputs:
-      test_prompt:
-        description: "Test prompt for Claude"
-        required: false
-        default: "List the files in the current directory starting with 'package'"
-  workflow_call:
-
+  workflow_dispatch: {}
 jobs:
   test-inline-prompt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-
-      - name: Test with inline prompt
-        id: inline-test
-        uses: ./base-action
-        with:
-          prompt: ${{ github.event.inputs.test_prompt || 'List the files in the current directory starting with "package"' }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "LS,Read"
-
-      - name: Verify inline prompt output
-        run: |
-          OUTPUT_FILE="${{ steps.inline-test.outputs.execution_file }}"
-          CONCLUSION="${{ steps.inline-test.outputs.conclusion }}"
-
-          echo "Conclusion: $CONCLUSION"
-          echo "Output file: $OUTPUT_FILE"
-
-          if [ "$CONCLUSION" = "success" ]; then
-            echo "✅ Action completed successfully"
-          else
-            echo "❌ Action failed"
-            exit 1
-          fi
-
-          if [ -f "$OUTPUT_FILE" ]; then
-            if [ -s "$OUTPUT_FILE" ]; then
-              echo "✅ Execution log file created successfully with content"
-              echo "Validating JSON format:"
-              if jq . "$OUTPUT_FILE" > /dev/null 2>&1; then
-                echo "✅ Output is valid JSON"
-                echo "Content preview:"
-                head -c 200 "$OUTPUT_FILE"
-              else
-                echo "❌ Output is not valid JSON"
-                exit 1
-              fi
-            else
-              echo "❌ Execution log file is empty"
-              exit 1
-            fi
-          else
-            echo "❌ Execution log file not found"
-            exit 1
-          fi
-
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    - name: Test with inline prompt
+      id: inline-test
+      uses: ./base-action
+      with:
+        prompt: ${{ github.event.inputs.test_prompt || 'List the files in the current
+          directory starting with "package"' }}
+        anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+        allowed_tools: LS,Read
+    - name: Verify inline prompt output
+      run: "OUTPUT_FILE=\"${{ steps.inline-test.outputs.execution_file }}\"\nCONCLUSION=\"\
+        ${{ steps.inline-test.outputs.conclusion }}\"\n\necho \"Conclusion: $CONCLUSION\"\
+        \necho \"Output file: $OUTPUT_FILE\"\n\nif [ \"$CONCLUSION\" = \"success\"\
+        \ ]; then\n  echo \"\u2705 Action completed successfully\"\nelse\n  echo \"\
+        \u274C Action failed\"\n  exit 1\nfi\n\nif [ -f \"$OUTPUT_FILE\" ]; then\n\
+        \  if [ -s \"$OUTPUT_FILE\" ]; then\n    echo \"\u2705 Execution log file\
+        \ created successfully with content\"\n    echo \"Validating JSON format:\"\
+        \n    if jq . \"$OUTPUT_FILE\" > /dev/null 2>&1; then\n      echo \"\u2705\
+        \ Output is valid JSON\"\n      echo \"Content preview:\"\n      head -c 200\
+        \ \"$OUTPUT_FILE\"\n    else\n      echo \"\u274C Output is not valid JSON\"\
+        \n      exit 1\n    fi\n  else\n    echo \"\u274C Execution log file is empty\"\
+        \n    exit 1\n  fi\nelse\n  echo \"\u274C Execution log file not found\"\n\
+        \  exit 1\nfi\n"
   test-prompt-file:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    - name: Create test prompt file
+      run: 'cat > test-prompt.txt << EOF
 
-      - name: Create test prompt file
-        run: |
-          cat > test-prompt.txt << EOF
-          ${PROMPT}
-          EOF
-        env:
-          PROMPT: ${{ github.event.inputs.test_prompt || 'List the files in the current directory starting with "package"' }}
+        ${PROMPT}
 
-      - name: Test with prompt file and allowed tools
-        id: prompt-file-test
-        uses: ./base-action
-        with:
-          prompt_file: "test-prompt.txt"
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "LS,Read"
+        EOF
 
-      - name: Verify prompt file output
-        run: |
-          OUTPUT_FILE="${{ steps.prompt-file-test.outputs.execution_file }}"
-          CONCLUSION="${{ steps.prompt-file-test.outputs.conclusion }}"
-
-          echo "Conclusion: $CONCLUSION"
-          echo "Output file: $OUTPUT_FILE"
-
-          if [ "$CONCLUSION" = "success" ]; then
-            echo "✅ Action completed successfully"
-          else
-            echo "❌ Action failed"
-            exit 1
-          fi
-
-          if [ -f "$OUTPUT_FILE" ]; then
-            if [ -s "$OUTPUT_FILE" ]; then
-              echo "✅ Execution log file created successfully with content"
-              echo "Validating JSON format:"
-              if jq . "$OUTPUT_FILE" > /dev/null 2>&1; then
-                echo "✅ Output is valid JSON"
-                echo "Content preview:"
-                head -c 200 "$OUTPUT_FILE"
-              else
-                echo "❌ Output is not valid JSON"
-                exit 1
-              fi
-            else
-              echo "❌ Execution log file is empty"
-              exit 1
-            fi
-          else
-            echo "❌ Execution log file not found"
-            exit 1
-          fi
+        '
+      env:
+        PROMPT: ${{ github.event.inputs.test_prompt || 'List the files in the current
+          directory starting with "package"' }}
+    - name: Test with prompt file and allowed tools
+      id: prompt-file-test
+      uses: ./base-action
+      with:
+        prompt_file: test-prompt.txt
+        anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+        allowed_tools: LS,Read
+    - name: Verify prompt file output
+      run: "OUTPUT_FILE=\"${{ steps.prompt-file-test.outputs.execution_file }}\"\n\
+        CONCLUSION=\"${{ steps.prompt-file-test.outputs.conclusion }}\"\n\necho \"\
+        Conclusion: $CONCLUSION\"\necho \"Output file: $OUTPUT_FILE\"\n\nif [ \"$CONCLUSION\"\
+        \ = \"success\" ]; then\n  echo \"\u2705 Action completed successfully\"\n\
+        else\n  echo \"\u274C Action failed\"\n  exit 1\nfi\n\nif [ -f \"$OUTPUT_FILE\"\
+        \ ]; then\n  if [ -s \"$OUTPUT_FILE\" ]; then\n    echo \"\u2705 Execution\
+        \ log file created successfully with content\"\n    echo \"Validating JSON\
+        \ format:\"\n    if jq . \"$OUTPUT_FILE\" > /dev/null 2>&1; then\n      echo\
+        \ \"\u2705 Output is valid JSON\"\n      echo \"Content preview:\"\n     \
+        \ head -c 200 \"$OUTPUT_FILE\"\n    else\n      echo \"\u274C Output is not\
+        \ valid JSON\"\n      exit 1\n    fi\n  else\n    echo \"\u274C Execution\
+        \ log file is empty\"\n    exit 1\n  fi\nelse\n  echo \"\u274C Execution log\
+        \ file not found\"\n  exit 1\nfi\n"
